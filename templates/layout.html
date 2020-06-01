@@ -9,7 +9,7 @@
   </head>
   <body>
     <nav>
-      <li class="home"><a href="/">&#8962;</a></li>
+      <li class="home"><a href="/start.txt">&#8962;</a></li>
       <li class="file">{{.Name}}</li>
       <li class="btn">New</li>
       <li class="btn"><a href="/edit{{.Name}}">Edit</a></li>
@@ -17,5 +17,19 @@
     <div class="container">
       {{.Page}}
     </div>
+  <script>
+      const lines = document.querySelectorAll('.line');
+      for (var i=0; i<lines.length; i++) {
+      lines[i].addEventListener('click', event => {
+	  var line = parseInt(event.target.id);
+	  if (isNaN(line)) {
+	      line = 1;
+	  } else {
+	      line--;
+	  }
+          document.location = "/edit" + document.location.pathname + "#" + line;
+      });
+      }
+  </script>
   </body>
 </html>

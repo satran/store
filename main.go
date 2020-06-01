@@ -21,11 +21,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	store, err := walk(s.Dir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	s.SetStore(store)
+
 	http.HandleFunc("/", render(s))
 	http.HandleFunc("/edit/", edit(s))
 	http.Handle("/static/", http.StripPrefix("/static/",
@@ -38,54 +37,33 @@ func main() {
 func render(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pageTmpl := template.Must(template.ParseFiles("templates/layout.html"))
-		rd, ok := s.Get(r.URL.Path)
-		if !ok {
+		path := filepath.Join(s.Dir, r.URL.Path)
+		if toParse(path) {
+			f, err := os.Open(path)
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte(http.StatusText(http.StatusNotFound)))
+				return
+			}
+			defer f.Close()
+			log.Println("parsing ", path)
+			content, err := parse(s.Dir, f)
+			if err != nil {
+				log.Fatal("parse: ", err)
+			}
+			err = pageTmpl.Execute(w, map[string]interface{}{
+				"Name": r.URL.Path,
+				"Page": template.HTML(content),
+			})
+			if err != nil {
+				log.Println("couldn't generate template ", err)
+			}
+		} else {
 			name := filepath.Join(s.Dir, r.URL.Path)
 			http.ServeFile(w, r, name)
 			return
 		}
-		err := pageTmpl.Execute(w, map[string]interface{}{
-			"Name": r.URL.Path,
-			"Page": template.HTML(rd),
-		})
-		if err != nil {
-			log.Println("couldn't generate template ", err)
-		}
 	}
-}
-
-func walk(dir string) (map[string][]byte, error) {
-	store := make(map[string][]byte)
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			// prevent panic by handling failure accessing a path
-			return err
-		}
-		if toParse(info.Name()) {
-			f, err := os.Open(path)
-			if err != nil {
-				log.Fatal("open: ", err)
-			}
-			defer f.Close()
-			log.Println("parsing ", path)
-			r, err := parse(dir, f)
-			if err != nil {
-				log.Fatal("parse: ", err)
-			}
-			key := path[len(dir):]
-			//TODO check err
-			by, err := ioutil.ReadAll(r)
-			if err != nil {
-				return err
-			}
-			store[key] = by
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return store, nil
 }
 
 func toParse(name string) bool {
@@ -93,20 +71,20 @@ func toParse(name string) bool {
 	return ext == ".txt" || ext == ".md"
 }
 
-func parse(baseDir string, in io.Reader) (io.Reader, error) {
+func parse(baseDir string, in io.Reader) (string, error) {
 	r := bufio.NewReader(in)
 	out := &bytes.Buffer{}
 	lineNo := 1
 	for {
 		line, err := r.ReadString('\n')
 		if err != nil && err != io.EOF {
-			return nil, fmt.Errorf("ReadLine: %w", err)
+			return "", fmt.Errorf("ReadLine: %w", err)
 		}
 		content := ""
 		if ismacro(line) {
 			output, err := macro(removeMacroSyntax(line), baseDir)
 			if err != nil {
-				return nil, err
+				return "", err
 			}
 			for _, l := range strings.Split(output, "\n") {
 				content += fmt.Sprintf(`<div>%s</div>`, toHTML(l))
@@ -120,7 +98,7 @@ func parse(baseDir string, in io.Reader) (io.Reader, error) {
 			break
 		}
 	}
-	return out, nil
+	return out.String(), nil
 }
 
 func removeMacroSyntax(line string) string {
@@ -173,14 +151,6 @@ func edit(s *Store) http.HandlerFunc {
 				log.Println(err)
 				return
 			}
-			go func() {
-				parsed, err := walk(s.Dir)
-				if err != nil {
-					log.Println("=== WARNING ===\n%s", err)
-					return
-				}
-				s.SetStore(parsed)
-			}()
 		case http.MethodGet:
 			if err := renderEdit(s.Dir, w, r); err != nil {
 				w.Write([]byte("something went wrong"))

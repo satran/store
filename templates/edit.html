@@ -11,7 +11,7 @@
   </head>
   <body>
     <nav>
-      <li class="home"><a href="/">&#8962;</a></li>
+      <li class="home"><a href="/start.txt">&#8962;</a></li>
       <li class="file">{{.Name}}</li>
       <li id="save-btn" class="btn">Save</li>
       <li class="btn"><a href="{{.Name}}">Close</a></li>
@@ -20,6 +20,7 @@
       <div class="container"><div><textarea id="editor" name="content">{{.Content}}</textarea></div></div>
     </form>
     <script type="text/javascript" src="/static/lib/codemirror.js"></script>
+    <script type="text/javascript" src="/static/lib/active-line.js"></script>
     <script>
       var line = parseInt(document.location.hash.replace(/^#/, ""), 10);
       if (isNaN(line)) {
@@ -29,6 +30,8 @@
       var editor = CodeMirror.fromTextArea(textarea, {
 	  lineNumbers: false,
 	  lineWrapping: true,
+	  firstLineNumber: 1,
+	  styleActiveLine: true,
 	  autoFocus: true
       });
       editor.setCursor({"line": line, "ch": 1});
