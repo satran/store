@@ -26,6 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 	http.HandleFunc("/", render(abs, store))
+	http.HandleFunc("/edit/", edit(abs, store))
 	http.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.Dir("static"))))
 	if err := http.ListenAndServe(":8080", nil); err != nil {
@@ -160,4 +161,60 @@ func toHTML(line string) string {
 		line = linkReg.ReplaceAllString(line, `<a href="$2">$1</a>`)
 	}
 	return line
+}
+
+func edit(dir string, s map[string][]byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPut:
+			if err := update(dir, r); err != nil {
+				w.Write([]byte("something went wrong"))
+				log.Println(err)
+				return
+			}
+		case http.MethodGet:
+			if err := renderEdit(dir, w, r); err != nil {
+				w.Write([]byte("something went wrong"))
+				log.Println(err)
+				return
+			}
+		default:
+			w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
+		}
+	}
+}
+
+func update(dir string, r *http.Request) error {
+	fileName := filepath.Join(dir, r.URL.Path[(len("/edit")):])
+	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("open: %s", err)
+	}
+	defer f.Close()
+	_, err = io.Copy(f, r.Body)
+	return err
+}
+
+func renderEdit(dir string, w http.ResponseWriter, r *http.Request) error {
+	//TODO move to global when the template is better
+	editTmpl := template.Must(template.ParseFiles("templates/edit.html"))
+	path := r.URL.Path[(len("/edit")):]
+	fileName := filepath.Join(dir, path)
+	f, err := os.Open(fileName)
+	if err != nil {
+		return fmt.Errorf("open: %s", err)
+	}
+	defer f.Close()
+	content, err := ioutil.ReadAll(f)
+	if err != nil {
+		return fmt.Errorf("readall: %s", err)
+	}
+	err = editTmpl.Execute(w, map[string]interface{}{
+		"Name":    path,
+		"Content": string(content),
+	})
+	if err != nil {
+		return fmt.Errorf("template exec: %s", err)
+	}
+	return nil
 }
