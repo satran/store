@@ -73,4 +73,9 @@ nav li.btn {
     border-radius: 3px;
     padding: 0 .2em;
     margin-right: 1em;
+    font-size: .7em;
+    text-transform: lowercase;
+    min-width: 1em;
+    display: inline-block;
+    text-align: center;
 }

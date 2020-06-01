@@ -144,10 +144,8 @@ func macro(command string, dir string) (string, error) {
 }
 
 var (
-	taskReg     = regexp.MustCompile(`^[\t ]*[\-\#] \[([ a-zA-Z]*)\] `)
-	taskDoneReg = regexp.MustCompile(`^[\t ]*[\-\#] \[[xX]\] `)
-	taskOpenReg = regexp.MustCompile(`^[\t ]*[\-\#] \[[ ]\] `)
-	istask      = taskReg.MatchString
+	taskReg = regexp.MustCompile(`^[\t ]*[\-\#] \[([ a-zA-Z]*)\] `)
+	istask  = taskReg.MatchString
 )
 
 func toHTML(line string) string {
@@ -155,8 +153,6 @@ func toHTML(line string) string {
 	case strings.HasPrefix(line, "# "):
 		line = fmt.Sprintf(`<span class="heading">%s</span>`, strings.TrimLeft(line, "# "))
 	case istask(line):
-		line = taskDoneReg.ReplaceAllString(line, `<input checked="true" class="task" type="checkbox" \>`)
-		line = taskOpenReg.ReplaceAllString(line, `<input class="task" type="checkbox" \>`)
 		line = taskReg.ReplaceAllString(line, `<span class="keyword">$1</span>`)
 	}
 	return line
