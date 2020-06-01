@@ -68,3 +68,9 @@ nav li.btn {
 .heading {
     font-weight: bold;
 }
+.keyword {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 0 .2em;
+    margin-right: 1em;
+}

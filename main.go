@@ -87,16 +87,9 @@ func walk(dir string) (map[string][]byte, error) {
 }
 
 func toParse(name string) bool {
-	return filepath.Ext(name) == ".txt"
+	ext := filepath.Ext(name)
+	return ext == ".txt" || ext == ".md"
 }
-
-var (
-	macroReg = regexp.MustCompile(`^[\t ]*\#\|`)
-	ismacro  = macroReg.MatchString
-
-	taskReg = regexp.MustCompile(`^[\t ]*[\-\#] \[[ a-zA-Z]\] `)
-	istask  = taskReg.MatchString
-)
 
 func parse(baseDir string, in io.Reader) (io.Reader, error) {
 	r := bufio.NewReader(in)
@@ -107,17 +100,19 @@ func parse(baseDir string, in io.Reader) (io.Reader, error) {
 		if err != nil && err != io.EOF {
 			return nil, fmt.Errorf("ReadLine: %w", err)
 		}
+		content := ""
 		if ismacro(line) {
-			out.Write([]byte(fmt.Sprintf(`<div class="line" id="%d">`, lineNo)))
-			if err := macro(removeMacroSyntax(line), baseDir, out); err != nil {
+			output, err := macro(removeMacroSyntax(line), baseDir)
+			if err != nil {
 				return nil, err
 			}
-			out.Write([]byte("</div>"))
-		} else if istask(line) {
-			out.WriteString(taskAsHTML(line, lineNo))
+			for _, l := range strings.Split(output, "\n") {
+				content += fmt.Sprintf(`<div>%s</div>`, toHTML(l))
+			}
 		} else {
-			out.WriteString(toHTML(line, lineNo))
+			content = toHTML(line)
 		}
+		out.Write([]byte(fmt.Sprintf(`<div class="line" id="%d">%s</div>`, lineNo, content)))
 		lineNo++
 		if err == io.EOF {
 			break
@@ -126,34 +121,43 @@ func parse(baseDir string, in io.Reader) (io.Reader, error) {
 	return out, nil
 }
 
-func taskAsHTML(line string, lineNo int) string {
-	line = strings.Replace(line, "- [ ]", `<input class="task" type="checkbox" \>`, 1)
-	line = strings.Replace(line, "- [x]", `<input class="task" checked="true" type="checkbox" \>`, 1)
-	return toHTML(line, lineNo)
-}
-
-func toHTML(line string, lineNo int) string {
-	if strings.HasPrefix(line, "# ") {
-		return fmt.Sprintf(`<div class="line heading" id="%d">%s</div>`,
-			lineNo, strings.TrimLeft(line, "# "))
-	} else {
-		return fmt.Sprintf(`<div class="line" id="%d">%s</div>`,
-			lineNo, strings.TrimLeft(line, "# "))
-	}
-}
-
 func removeMacroSyntax(line string) string {
 	return macroReg.ReplaceAllString(line, "")
 }
 
-func macro(command string, dir string, out io.Writer) error {
+var (
+	macroReg = regexp.MustCompile(`^[\t ]*\#\|`)
+	ismacro  = macroReg.MatchString
+)
+
+func macro(command string, dir string) (string, error) {
+	out := &bytes.Buffer{}
 	cmd := exec.Command("bash", "-c", command)
 	cmd.Dir = dir
 	cmd.Stdout = out
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("command run: %w", err)
+		return "", fmt.Errorf("command run: %w", err)
 	}
-	return nil
+	return out.String(), nil
+}
+
+var (
+	taskReg     = regexp.MustCompile(`^[\t ]*[\-\#] \[([ a-zA-Z]*)\] `)
+	taskDoneReg = regexp.MustCompile(`^[\t ]*[\-\#] \[[xX]\] `)
+	taskOpenReg = regexp.MustCompile(`^[\t ]*[\-\#] \[[ ]\] `)
+	istask      = taskReg.MatchString
+)
+
+func toHTML(line string) string {
+	switch {
+	case strings.HasPrefix(line, "# "):
+		line = fmt.Sprintf(`<span class="heading">%s</span>`, strings.TrimLeft(line, "# "))
+	case istask(line):
+		line = taskDoneReg.ReplaceAllString(line, `<input checked="true" class="task" type="checkbox" \>`)
+		line = taskOpenReg.ReplaceAllString(line, `<input class="task" type="checkbox" \>`)
+		line = taskReg.ReplaceAllString(line, `<span class="keyword">$1</span>`)
+	}
+	return line
 }
