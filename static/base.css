@@ -26,7 +26,8 @@ body{
     margin:0;
     padding:0;
     color: #333;
-    font-family: 'Open sans', sans-serif;
+    /*font-family: 'Open sans', sans-serif;*/
+    font-family: monospace;
     font-size: 100%;
     text-rendering: optimizeLegibility;
 }

@@ -25,7 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	http.HandleFunc("/", render(store))
+	http.HandleFunc("/", render(abs, store))
 	http.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.Dir("static"))))
 	if err := http.ListenAndServe(":8080", nil); err != nil {
@@ -33,13 +33,13 @@ func main() {
 	}
 }
 
-func render(s map[string][]byte) http.HandlerFunc {
+func render(dir string, s map[string][]byte) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pageTmpl := template.Must(template.ParseFiles("templates/layout.html"))
 		rd, ok := s[r.URL.Path]
 		if !ok {
-			log.Printf("path not found: %q", r.URL.Path)
-			http.Error(w, "Not Found", http.StatusNotFound)
+			name := filepath.Join(dir, r.URL.Path)
+			http.ServeFile(w, r, name)
 			return
 		}
 		err := pageTmpl.Execute(w, map[string]interface{}{
@@ -94,7 +94,7 @@ var (
 	macroReg = regexp.MustCompile(`^[\t ]*\#\|`)
 	ismacro  = macroReg.MatchString
 
-	taskReg = regexp.MustCompile(`^[\t ]*[\-\#] \[ \] `)
+	taskReg = regexp.MustCompile(`^[\t ]*[\-\#] \[[ a-zA-Z]\] `)
 	istask  = taskReg.MatchString
 )
 
@@ -127,8 +127,9 @@ func parse(baseDir string, in io.Reader) (io.Reader, error) {
 }
 
 func taskAsHTML(line string, lineNo int) string {
-	return toHTML(taskReg.ReplaceAllString(
-		line, `<input class="task" type="checkbox" \>&nbsp;`), lineNo)
+	line = strings.Replace(line, "- [ ]", `<input class="task" type="checkbox" \>`, 1)
+	line = strings.Replace(line, "- [x]", `<input class="task" checked="true" type="checkbox" \>`, 1)
+	return toHTML(line, lineNo)
 }
 
 func toHTML(line string, lineNo int) string {
