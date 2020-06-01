@@ -70,7 +70,7 @@ func walk(dir string) (map[string][]byte, error) {
 			if err != nil {
 				log.Fatal("parse: ", err)
 			}
-			key := removeExtension(path)[len(dir):]
+			key := path[len(dir):]
 			//TODO check err
 			by, err := ioutil.ReadAll(r)
 			if err != nil {
@@ -90,12 +90,13 @@ func toParse(name string) bool {
 	return filepath.Ext(name) == ".txt"
 }
 
-func removeExtension(name string) string {
-	return strings.TrimRight(name, filepath.Ext(name))
-}
+var (
+	macroReg = regexp.MustCompile(`^[\t ]*\#\|`)
+	ismacro  = macroReg.MatchString
 
-var macroReg = regexp.MustCompile(`^[\t ]*\#\|`)
-var ismacro = macroReg.MatchString
+	taskReg = regexp.MustCompile(`^[\t ]*[\-\#] \[ \] `)
+	istask  = taskReg.MatchString
+)
 
 func parse(baseDir string, in io.Reader) (io.Reader, error) {
 	r := bufio.NewReader(in)
@@ -107,9 +108,13 @@ func parse(baseDir string, in io.Reader) (io.Reader, error) {
 			return nil, fmt.Errorf("ReadLine: %w", err)
 		}
 		if ismacro(line) {
+			out.Write([]byte(fmt.Sprintf(`<div class="line" id="%d">`, lineNo)))
 			if err := macro(removeMacroSyntax(line), baseDir, out); err != nil {
 				return nil, err
 			}
+			out.Write([]byte("</div>"))
+		} else if istask(line) {
+			out.WriteString(taskAsHTML(line, lineNo))
 		} else {
 			out.WriteString(toHTML(line, lineNo))
 		}
@@ -121,12 +126,17 @@ func parse(baseDir string, in io.Reader) (io.Reader, error) {
 	return out, nil
 }
 
+func taskAsHTML(line string, lineNo int) string {
+	return toHTML(taskReg.ReplaceAllString(
+		line, `<input class="task" type="checkbox" \>&nbsp;`), lineNo)
+}
+
 func toHTML(line string, lineNo int) string {
 	if strings.HasPrefix(line, "# ") {
-		return fmt.Sprintf(`<h1 id="%d">%s</h1>`,
+		return fmt.Sprintf(`<div class="line heading" id="%d">%s</div>`,
 			lineNo, strings.TrimLeft(line, "# "))
 	} else {
-		return fmt.Sprintf(`<p id="%d">%s</p>`,
+		return fmt.Sprintf(`<div class="line" id="%d">%s</div>`,
 			lineNo, strings.TrimLeft(line, "# "))
 	}
 }
