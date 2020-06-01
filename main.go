@@ -146,6 +146,7 @@ func macro(command string, dir string) (string, error) {
 var (
 	taskReg = regexp.MustCompile(`^[\t ]*[\-\#] \[([ a-zA-Z]*)\] `)
 	istask  = taskReg.MatchString
+	linkReg = regexp.MustCompile(`\[(.*)\]\((.*)\)`)
 )
 
 func toHTML(line string) string {
@@ -154,6 +155,9 @@ func toHTML(line string) string {
 		line = fmt.Sprintf(`<span class="heading">%s</span>`, strings.TrimLeft(line, "# "))
 	case istask(line):
 		line = taskReg.ReplaceAllString(line, `<span class="keyword">$1</span>`)
+	}
+	if linkReg.MatchString(line) {
+		line = linkReg.ReplaceAllString(line, `<a href="$2">$1</a>`)
 	}
 	return line
 }
