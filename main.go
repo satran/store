@@ -17,16 +17,17 @@ import (
 )
 
 func main() {
-	abs, err := filepath.Abs(os.Args[1])
+	s, err := NewStore(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
-	store, err := walk(abs)
+	store, err := walk(s.Dir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	http.HandleFunc("/", render(abs, store))
-	http.HandleFunc("/edit/", edit(abs, store))
+	s.SetStore(store)
+	http.HandleFunc("/", render(s))
+	http.HandleFunc("/edit/", edit(s))
 	http.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.Dir("static"))))
 	if err := http.ListenAndServe(":8080", nil); err != nil {
@@ -34,12 +35,12 @@ func main() {
 	}
 }
 
-func render(dir string, s map[string][]byte) http.HandlerFunc {
+func render(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pageTmpl := template.Must(template.ParseFiles("templates/layout.html"))
-		rd, ok := s[r.URL.Path]
+		rd, ok := s.Get(r.URL.Path)
 		if !ok {
-			name := filepath.Join(dir, r.URL.Path)
+			name := filepath.Join(s.Dir, r.URL.Path)
 			http.ServeFile(w, r, name)
 			return
 		}
@@ -163,17 +164,25 @@ func toHTML(line string) string {
 	return line
 }
 
-func edit(dir string, s map[string][]byte) http.HandlerFunc {
+func edit(s *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPut:
-			if err := update(dir, r); err != nil {
+			if err := update(s.Dir, r); err != nil {
 				w.Write([]byte("something went wrong"))
 				log.Println(err)
 				return
 			}
+			go func() {
+				parsed, err := walk(s.Dir)
+				if err != nil {
+					log.Println("=== WARNING ===\n%s", err)
+					return
+				}
+				s.SetStore(parsed)
+			}()
 		case http.MethodGet:
-			if err := renderEdit(dir, w, r); err != nil {
+			if err := renderEdit(s.Dir, w, r); err != nil {
 				w.Write([]byte("something went wrong"))
 				log.Println(err)
 				return
