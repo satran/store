@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{{.Name}}</title>
+    <link rel="stylesheet" href="/static/base.css">
+    <link rel="stylesheet" href="/static/lib/codemirror.css">
+    <style>
+    </style>
+  </head>
+  <body>
+    <nav>
+      <li class="home"><a href="/">&#8962;</a></li>
+      <li class="file">{{.Name}}</li>
+      <li id="save-btn" class="btn">Save</li>
+      <li class="btn"><a href="{{.Name}}">Cancel</a></li>
+    </nav>
+    <form method="POST" id="edit-form">
+      <div class="container"><div><textarea id="editor" name="content">{{.Content}}</textarea></div></div>
+    </form>
+    <script type="text/javascript" src="/static/lib/codemirror.js"></script>
+    <script>
+      var line = parseInt(document.location.hash.replace(/^#/, ""), 10);
+      if (isNaN(line)) {
+	  line = 1;
+      }
+      var textarea = document.getElementById("editor");
+      var editor = CodeMirror.fromTextArea(textarea, {
+	  lineNumbers: false,
+	  lineWrapping: true,
+	  autoFocus: true
+      });
+      editor.setCursor({"line": line, "ch": 1});
+      editor.focus();
+
+      const saveBtn = document.querySelector('#save-btn');
+      saveBtn.addEventListener('click', event => {
+	  var request = new XMLHttpRequest();
+	  request.open('PUT', document.location.pathname, true);
+	  request.setRequestHeader('Content-Type', 'text/plain; charset=UTF-8');
+	  request.send(editor.getValue());
+      });
+
+    </script>
+  </body>
+</html>
