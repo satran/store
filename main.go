@@ -137,7 +137,7 @@ func toHTML(line string) string {
 		line = taskReg.ReplaceAllString(line, `<span class="keyword">$1</span>`)
 	}
 	if linkReg.MatchString(line) {
-		line = linkReg.ReplaceAllString(line, `<a href="$2">$1</a>`)
+		line = linkReg.ReplaceAllString(line, `<a href="$2" target="_blank">$1</a>`)
 	}
 	return line
 }

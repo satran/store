@@ -2,13 +2,13 @@ body{
     margin:0;
     padding:0;
     color: #333;
-    /*font-family: 'Open sans', sans-serif;*/
-    font-family: monospace;
+    /*font-family: 'Helvetica Neue', 'Open sans', sans-serif;*/
+    font-family: 'Inconsolata', monospace;
     font-size: 100%;
     text-rendering: optimizeLegibility;
 }
 html>body{
-    font-size: 17px;
+    /*font-size: 17px;*/
 }
 
 .line:target {
@@ -73,6 +73,7 @@ nav li a{
 
 .CodeMirror {
     height: auto !important;
+    font-family: 'Inconsolata', monospace !important;
 }
 
 @media (prefers-color-scheme: dark) {

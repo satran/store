@@ -17,19 +17,21 @@
     <div class="container">
       {{.Page}}
     </div>
-  <script>
+    <script>
       const lines = document.querySelectorAll('.line');
       for (var i=0; i<lines.length; i++) {
-      lines[i].addEventListener('click', event => {
-	  var line = parseInt(event.target.id);
-	  if (isNaN(line)) {
-	      line = 1;
-	  } else {
-	      line--;
-	  }
-          document.location = "/edit" + document.location.pathname + "#" + line;
-      });
+	  lines[i].addEventListener('click', event => {
+	      if (event.target.className !== "line")
+		  return;
+	      var line = parseInt(event.target.id);
+	      if (isNaN(line)) {
+		  line = 1;
+	      } else {
+		  line--;
+	      }
+              document.location = "/edit" + document.location.pathname + "#" + line;
+	  });
       }
-  </script>
+    </script>
   </body>
 </html>
