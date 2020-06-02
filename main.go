@@ -124,7 +124,7 @@ func macro(command string, dir string) (string, error) {
 }
 
 var (
-	taskReg = regexp.MustCompile(`^[\t ]*[\-\#] \[([ a-zA-Z]*)\] `)
+	taskReg = regexp.MustCompile(`^([\t ])*[\-\#] \[([ a-zA-Z]*)\] `)
 	istask  = taskReg.MatchString
 	linkReg = regexp.MustCompile(`\[(.*)\]\((.*)\)`)
 )
@@ -134,7 +134,7 @@ func toHTML(line string) string {
 	case strings.HasPrefix(line, "# "):
 		line = fmt.Sprintf(`<span class="heading">%s</span>`, strings.TrimLeft(line, "# "))
 	case istask(line):
-		line = taskReg.ReplaceAllString(line, `<span class="keyword">$1</span>`)
+		line = taskReg.ReplaceAllString(line, `$1<span class="keyword">$2</span>`)
 	}
 	if linkReg.MatchString(line) {
 		line = linkReg.ReplaceAllString(line, `<a href="$2" target="_blank">$1</a>`)
